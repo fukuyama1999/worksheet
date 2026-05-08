@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ひとり親世帯の可処分所得から考える１カ月の生活</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap');
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary: #7c9ef5;
+            --primary-dark: #5b7fdb;
+            --accent: #a5b8f0;
+            --accent-light: #eef2ff;
+            --gray-50: #fafbfc; --gray-100: #f5f6f8; --gray-200: #e8eaef;
+            --gray-400: #b0b5c0; --gray-500: #8a90a0;
+            --gray-600: #6b7185; --gray-700: #4d5366; --gray-800: #3a3f50;
+            --radius: 12px;
+        }
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: linear-gradient(160deg, #f7f8fc 0%, #eef1f9 100%);
+            min-height: 100vh; padding: 32px 16px;
+            color: var(--gray-800); line-height: 1.7;
+        }
+        .page {
+            max-width: 780px; margin: 0 auto 32px; background: #fff;
+            border-radius: 20px; box-shadow: 0 6px 30px rgba(0,0,0,0.05);
+            padding: 40px; position: relative; overflow: hidden;
+        }
+        .page::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+            background: linear-gradient(90deg, #b8ccf5, #c5b8f5, #f5b8d9);
+        }
+        .header { text-align: center; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--gray-200); }
+        .header h1 { font-size: 22px; font-weight: 800; color: var(--gray-800); margin-bottom: 6px; }
+        .header p { font-size: 14px; color: var(--gray-500); }
+
+        .section { margin-bottom: 24px; }
+        .section-title {
+            font-size: 16px; font-weight: 700; color: #6b83c4;
+            padding: 10px 16px; background: #f0f4ff;
+            border-left: 4px solid #a0b4e8; border-radius: 0 8px 8px 0;
+            margin-bottom: 14px;
+        }
+        .procedure-list { padding-left: 20px; margin-bottom: 8px; }
+        .procedure-list li { font-size: 14px; margin-bottom: 6px; color: var(--gray-700); }
+
+        /* 世帯設定 */
+        .setting-group { margin-bottom: 10px; display: flex; align-items: center; gap: 12px; font-size: 14px; flex-wrap: wrap; }
+        .setting-label { font-weight: 600; min-width: 120px; }
+        .radio-group { display: flex; gap: 8px; }
+        .radio-group label {
+            display: flex; align-items: center; gap: 5px;
+            padding: 6px 16px; border: 2px solid var(--gray-200);
+            border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;
+            transition: all 0.2s;
+        }
+        .radio-group input[type="radio"] { display: none; }
+        .radio-group input[type="radio"]:checked + span { color: #5b7fdb; }
+        .radio-group label:has(input:checked) {
+            border-color: #a0b4e8; background: #f0f4ff;
+        }
+        .setting-note { font-size: 12px; color: var(--gray-400); }
+        .fixed-value { font-weight: 600; color: var(--gray-700); }
+
+        /* テーブル */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 13px; }
+        th, td { border: 1px solid var(--gray-200); padding: 8px 12px; text-align: center; }
+        th { background: linear-gradient(135deg, #8ba4d9, #a0b8eb); color: #fff; font-weight: 600; font-size: 12px; }
+        td { background: #fff; }
+        .highlight-col { background: #f0f4ff !important; font-weight: 700; color: #5b7fdb; }
+        .ref-note { font-size: 11px; color: var(--gray-400); margin-top: 4px; line-height: 1.5; }
+
+        /* 家計簿 */
+        .budget-table td { text-align: left; }
+        .budget-table .item-cell { width: 40%; font-weight: 600; font-size: 13px; }
+        .budget-table .amount-cell { width: 60%; }
+        .budget-table input[type="number"] {
+            width: 100%; border: none; border-bottom: 2px solid var(--gray-200);
+            padding: 6px 4px; font-size: 14px; font-family: inherit;
+            text-align: right; outline: none; transition: border-color 0.2s; background: transparent;
+        }
+        .budget-table input[type="number"]:focus { border-bottom-color: #a0b4e8; }
+        .required { color: #e8878a; font-size: 11px; font-weight: 700; }
+
+        /* 集計 */
+        .summary-box {
+            margin-top: 16px; padding: 16px 20px;
+            background: linear-gradient(135deg, #f5f7ff, #f0f2fa);
+            border-radius: var(--radius); border: 1px solid #d4ddf5;
+        }
+        .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 15px; }
+        .summary-row + .summary-row { border-top: 1px dashed #c8d4f0; }
+        .summary-label { font-weight: 600; }
+        .summary-value { font-weight: 800; font-size: 18px; }
+        .summary-value.positive { color: #6cb88c; }
+        .summary-value.negative { color: #e07070; }
+        .summary-value.neutral { color: #6b8ad4; }
+
+        /* 印刷ボタン */
+        .action-bar { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+        .btn {
+            padding: 10px 24px; border: none; border-radius: 10px;
+            font-family: inherit; font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #8ba4d9, #a0b8eb); color: #fff; box-shadow: 0 4px 12px rgba(139,164,217,0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(139,164,217,0.4); }
+        .btn-secondary { background: #fff; color: var(--gray-700); border: 2px solid var(--gray-200); }
+        .btn-secondary:hover { border-color: #a0b4e8; color: #5b7fdb; }
+
+        /* 編集可能要素 */
+        [contenteditable="true"] {
+            outline: none; transition: background 0.2s;
+            border-radius: 3px; padding: 0 2px; margin: 0 -2px;
+        }
+        [contenteditable="true"]:hover { background: #fafbff; }
+        [contenteditable="true"]:focus { background: #f0f4ff; box-shadow: inset 0 0 0 1px #c0d0f0; }
+        .edit-hint {
+            text-align: center; font-size: 12px; color: var(--gray-400);
+            margin-bottom: 16px; padding: 6px 12px;
+            background: #f9faff; border-radius: 6px; border: 1px dashed #d4ddf5;
+        }
+        .edit-hint span { color: #8ba4d9; font-weight: 600; }
+
+        @media (max-width: 768px) {
+            body { padding: 12px 6px; }
+            .page { padding: 20px 16px; border-radius: 14px; }
+            .header h1 { font-size: 18px; }
+            .setting-group { flex-direction: column; align-items: flex-start; gap: 6px; }
+        }
+        @page { size: A4 portrait; margin: 10mm 12mm; }
+        @media print {
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body { background: #fff !important; padding: 0 !important; }
+            .page { box-shadow: none !important; border-radius: 0 !important; max-width: 100% !important; margin: 0 !important; padding: 8mm 0 !important; overflow: visible !important; }
+            .page::before { display: none; }
+            .page-break { page-break-before: always; }
+            .print-hidden { display: none !important; }
+            .btn { display: none !important; }
+            .action-bar { display: none !important; }
+            .edit-hint { display: none !important; }
+            [contenteditable="true"]:hover, [contenteditable="true"]:focus { background: transparent !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ====== ページ1：説明・設定・参考データ ====== -->
+<div class="page">
+    <div class="edit-hint print-hidden">✏️ <span>テキストをクリック</span>すると直接編集できます</div>
+    <div class="header">
+        <h1 contenteditable="true">〜ひとり親世帯の可処分所得から考える １カ月の生活〜</h1>
+        <p contenteditable="true">ひとり親世帯として、実際に1カ月の家計のやりくりを考えてみるワークシートです。</p>
+    </div>
+
+    <!-- 手順 -->
+    <div class="section">
+        <div class="section-title" contenteditable="true">【手順】</div>
+        <ol class="procedure-list">
+            <li contenteditable="true">最初に、親の人数および子どもの人数を選択してください。</li>
+            <li contenteditable="true">食費・水道光熱費や家賃等の参考データをもとに、設定された収入内でやりくりし、裏面の家計簿に記入してください。</li>
+            <li contenteditable="true">収入内でおさまらなかった場合、何から削っていくかを考えてみてください。</li>
+            <li contenteditable="true">ご自身で考えた家計のやりくりの方法を、同じグループの方と共有してください。</li>
+        </ol>
+    </div>
+
+    <!-- 世帯の設定 -->
+    <div class="section">
+        <div class="section-title" contenteditable="true">【世帯の設定】</div>
+        <div class="setting-group">
+            <span class="setting-label" contenteditable="true">・親の人数…</span>
+            <div class="radio-group">
+                <label><input type="radio" name="parent" value="1" checked onchange="updateAll()"><span>ひとり親</span></label>
+                <label><input type="radio" name="parent" value="2" onchange="updateAll()"><span>ふたり親</span></label>
+            </div>
+            <span class="setting-note">※選択してください</span>
+        </div>
+        <div class="setting-group">
+            <span class="setting-label" contenteditable="true">・子どもの年齢…</span>
+            <span class="fixed-value" contenteditable="true">中学生</span>
+            <span class="setting-note">※変更不可</span>
+        </div>
+        <div class="setting-group">
+            <span class="setting-label" contenteditable="true">・子どもの人数…</span>
+            <div class="radio-group">
+                <label><input type="radio" name="children" value="1" checked onchange="updateAll()"><span>1人</span></label>
+                <label><input type="radio" name="children" value="2" onchange="updateAll()"><span>2人</span></label>
+            </div>
+            <span class="setting-note">※選択してください</span>
+        </div>
+    </div>
+
+    <!-- 世帯収入 -->
+    <div class="section">
+        <div class="section-title" contenteditable="true">【世帯収入】</div>
+        <table id="incomeTable">
+            <tr><th contenteditable="true">世帯人数</th><th contenteditable="true">1人</th><th contenteditable="true">2人</th><th contenteditable="true">3人</th><th contenteditable="true">4人</th></tr>
+            <tr>
+                <td style="font-weight:600; background:var(--gray-50);" contenteditable="true">月の手取り収入</td>
+                <td id="inc1" contenteditable="true">106,000 円</td><td id="inc2" contenteditable="true">150,000 円</td>
+                <td id="inc3" contenteditable="true">183,000 円</td><td id="inc4" contenteditable="true">212,000 円</td>
+            </tr>
+        </table>
+        <p style="text-align:center; margin-top:8px;">
+            あなたの世帯の月収：<strong id="currentIncome" style="font-size:20px; color:#6b8ad4;">―</strong>
+        </p>
+    </div>
+
+    <!-- 参考データ -->
+    <div class="section">
+        <div class="section-title" contenteditable="true">【参考データ】</div>
+        <p style="font-size:13px; font-weight:600; margin-bottom:8px;" contenteditable="true">① 世帯人数別 1か月あたりの食費・水道光熱費平均値（百円単位で四捨五入）<span class="required">※必須</span></p>
+        <table>
+            <tr><th contenteditable="true">世帯人数</th><th contenteditable="true">1人</th><th contenteditable="true">2人</th><th contenteditable="true">3人</th><th contenteditable="true">4人</th></tr>
+            <tr><td style="font-weight:600; background:var(--gray-50);" contenteditable="true">食費平均値*1</td><td contenteditable="true">44,000 円</td><td contenteditable="true">75,000 円</td><td contenteditable="true">88,000 円</td><td contenteditable="true">96,000 円</td></tr>
+            <tr><td style="font-weight:600; background:var(--gray-50);" contenteditable="true">水道光熱費*2</td><td contenteditable="true">12,000 円</td><td contenteditable="true">20,000 円</td><td contenteditable="true">24,000 円</td><td contenteditable="true">25,000 円</td></tr>
+        </table>
+        <p class="ref-note" contenteditable="true">*1 総務省「2024年 家計調査（家計収支編）」単身世帯・二人以上の世帯の年間関連額から1ヶ月あたりの平均に変換<br>*2 Looop でんき 水道光熱費の平均値はどれくらい？世帯人数別・地域別の月収と節約術を解説（2025/10/28 最終閲覧）</p>
+
+        <!-- 参考データ② -->
+        <p style="font-size:13px; font-weight:600; margin: 16px 0 8px;" contenteditable="true">② 草加市の間取りごとの家賃平均値 <span class="required">※必須</span></p>
+        <table>
+            <tr><th contenteditable="true">間取り</th><th contenteditable="true">1R・1K・1DK</th><th contenteditable="true">1LDK・2K・2DK</th><th contenteditable="true">2LDK・3K・3DK</th><th contenteditable="true">3LDK・4K・4DK</th></tr>
+            <tr><td style="font-weight:600; background:var(--gray-50);" contenteditable="true">家賃平均値</td><td contenteditable="true">59,300 円</td><td contenteditable="true">77,700 円</td><td contenteditable="true">89,300 円</td><td contenteditable="true">144,000 円</td></tr>
+        </table>
+        <p class="ref-note" contenteditable="true">Yahoo!不動産　草加市の家賃相場情報（2026/5/7 最終閲覧）</p>
+
+        <!-- 参考データ③ -->
+        <p style="font-size:13px; font-weight:600; margin: 16px 0 8px;" contenteditable="true">③ 習い事別 月謝の平均値（千円単位に切り上げ）<span class="setting-note">※選択</span></p>
+        <table>
+            <tr><th contenteditable="true">習い事</th><th contenteditable="true">水泳</th><th contenteditable="true">学習塾</th><th contenteditable="true">ピアノ</th><th contenteditable="true">英会話</th><th contenteditable="true">書字</th></tr>
+            <tr><td style="font-weight:600; background:var(--gray-50);" contenteditable="true">月謝平均値</td><td contenteditable="true">7,000 円</td><td contenteditable="true">16,000 円</td><td contenteditable="true">8,000 円</td><td contenteditable="true">9,000 円</td><td contenteditable="true">4,000 円</td></tr>
+        </table>
+        <p class="ref-note" contenteditable="true">株式会社バンダイ「バンダイこどもアンケートレポート Vol.252 『子どもの習い事に関する意識調査』結果」</p>
+    </div>
+</div>
+
+<!-- ====== ページ2：家計簿 ====== -->
+<div class="page page-break">
+    <div class="header">
+        <h1 contenteditable="true">【家計簿】</h1>
+        <p contenteditable="true">※空欄の行はご自由にお使いください</p>
+    </div>
+
+    <table class="budget-table">
+        <tr><th class="item-cell">支出項目</th><th class="amount-cell">設定金額</th></tr>
+        <tr><td class="item-cell" contenteditable="true">家賃 <span class="required">*必須</span></td><td class="amount-cell"><input type="number" id="rent" placeholder="円" oninput="calcTotal()"></td></tr>
+        <tr><td class="item-cell" contenteditable="true">食費 <span class="required">*必須</span></td><td class="amount-cell"><input type="number" id="food" placeholder="円" oninput="calcTotal()"></td></tr>
+        <tr><td class="item-cell" contenteditable="true">水道光熱費 <span class="required">*必須</span></td><td class="amount-cell"><input type="number" id="utility" placeholder="円" oninput="calcTotal()"></td></tr>
+        <tr><td class="item-cell" contenteditable="true">通信費 <span class="required">*必須</span></td><td class="amount-cell"><input type="number" id="telecom" placeholder="円" oninput="calcTotal()"></td></tr>
+        <tr><td class="item-cell" contenteditable="true">習い事</td><td class="amount-cell"><input type="number" id="lesson" placeholder="円" oninput="calcTotal()"></td></tr>
+        <tr><td class="item-cell" contenteditable="true">医療費</td><td class="amount-cell"><input type="number" id="medical" placeholder="円" oninput="calcTotal()"></td></tr>
+        <tr><td class="item-cell" contenteditable="true">被服費</td><td class="amount-cell"><input type="number" id="clothing" placeholder="円" oninput="calcTotal()"></td></tr>
+        <tr><td class="item-cell" contenteditable="true">娯楽費</td><td class="amount-cell"><input type="number" id="entertainment" placeholder="円" oninput="calcTotal()"></td></tr>
+        <tr><td class="item-cell" contenteditable="true">貯蓄</td><td class="amount-cell"><input type="number" id="savings" placeholder="円" oninput="calcTotal()"></td></tr>
+        <tr><td class="item-cell"><input type="text" id="custom2name" value="" placeholder="自由入力" style="border:none;border-bottom:1px dashed #ccc;width:100%;font-family:inherit;font-size:13px;font-weight:600;outline:none;background:transparent;"></td><td class="amount-cell"><input type="number" id="custom2" placeholder="円" oninput="calcTotal()"></td></tr>
+        <tr><td class="item-cell"><input type="text" id="custom3name" value="" placeholder="自由入力" style="border:none;border-bottom:1px dashed #ccc;width:100%;font-family:inherit;font-size:13px;font-weight:600;outline:none;background:transparent;"></td><td class="amount-cell"><input type="number" id="custom3" placeholder="円" oninput="calcTotal()"></td></tr>
+        <tr><td class="item-cell"><input type="text" id="custom4name" value="" placeholder="自由入力" style="border:none;border-bottom:1px dashed #ccc;width:100%;font-family:inherit;font-size:13px;font-weight:600;outline:none;background:transparent;"></td><td class="amount-cell"><input type="number" id="custom4" placeholder="円" oninput="calcTotal()"></td></tr>
+    </table>
+
+    <!-- 集計 -->
+    <div class="summary-box">
+        <div class="summary-row">
+            <span class="summary-label">📥 月の手取り収入</span>
+            <span class="summary-value neutral" id="summaryIncome">―</span>
+        </div>
+        <div class="summary-row">
+            <span class="summary-label">📤 支出合計</span>
+            <span class="summary-value" id="summaryExpense" style="color:var(--gray-700);">0 円</span>
+        </div>
+        <div class="summary-row">
+            <span class="summary-label">💰 残額（収入 − 支出）</span>
+            <span class="summary-value" id="summaryBalance">―</span>
+        </div>
+    </div>
+
+    <div class="action-bar print-hidden">
+        <button class="btn btn-primary" onclick="downloadPDF()" id="pdfBtn">📄 PDFでダウンロード</button>
+        <button class="btn btn-secondary" onclick="resetAll()">🔄 リセット</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
+<script>
+    const incomeMap = { 1: 106000, 2: 150000, 3: 183000, 4: 212000 };
+
+    function getHouseholdSize() {
+        const p = parseInt(document.querySelector('input[name="parent"]:checked').value);
+        const c = parseInt(document.querySelector('input[name="children"]:checked').value);
+        return p + c;
+    }
+
+    function updateAll() {
+        const size = getHouseholdSize();
+        const income = incomeMap[size] || 0;
+        document.querySelectorAll('.highlight-col').forEach(el => el.classList.remove('highlight-col'));
+        const colIdx = size;
+        // 世帯収入テーブルのみハイライト（参考データには適用しない）
+        const incomeTable = document.getElementById('incomeTable');
+        if (incomeTable) {
+            incomeTable.querySelectorAll('tr').forEach(row => {
+                const cells = row.querySelectorAll('th, td');
+                if (cells[colIdx]) cells[colIdx].classList.add('highlight-col');
+            });
+        }
+        document.getElementById('currentIncome').textContent = income.toLocaleString() + ' 円';
+        document.getElementById('summaryIncome').textContent = income.toLocaleString() + ' 円';
+        calcTotal();
+    }
+
+    function calcTotal() {
+        const ids = ['rent','food','utility','telecom','lesson','medical','clothing','entertainment','savings','custom2','custom3','custom4'];
+        let total = 0;
+        ids.forEach(id => { total += parseInt(document.getElementById(id).value) || 0; });
+        const income = incomeMap[getHouseholdSize()] || 0;
+        const balance = income - total;
+        document.getElementById('summaryExpense').textContent = total.toLocaleString() + ' 円';
+        const balEl = document.getElementById('summaryBalance');
+        balEl.textContent = balance.toLocaleString() + ' 円';
+        balEl.className = 'summary-value ' + (balance >= 0 ? 'positive' : 'negative');
+    }
+
+    function resetAll() {
+        document.querySelectorAll('.budget-table input[type="number"]').forEach(el => el.value = '');
+        document.querySelectorAll('input[name="parent"]')[0].checked = true;
+        document.querySelectorAll('input[name="children"]')[0].checked = true;
+        updateAll();
+    }
+
+    function downloadPDF() {
+        const btn = document.getElementById('pdfBtn');
+        const origText = btn.textContent;
+        btn.textContent = '⏳ 生成中...';
+        btn.disabled = true;
+
+        // 印刷時と同様に非表示にする要素を一時的に隠す
+        const hiddenEls = document.querySelectorAll('.print-hidden');
+        hiddenEls.forEach(el => el.style.display = 'none');
+
+        // input内の値をattributeに反映（html2pdfがvalueを読めるように）
+        document.querySelectorAll('input').forEach(input => {
+            input.setAttribute('value', input.value);
+        });
+        // radio の checked 状態を反映
+        document.querySelectorAll('input[type="radio"]').forEach(radio => {
+            if (radio.checked) radio.setAttribute('checked', 'checked');
+            else radio.removeAttribute('checked');
+        });
+
+        const pages = document.querySelectorAll('.page');
+        const container = document.createElement('div');
+        pages.forEach((page, i) => {
+            const clone = page.cloneNode(true);
+            if (i > 0) {
+                clone.style.pageBreakBefore = 'always';
+            }
+            container.appendChild(clone);
+        });
+
+        const opt = {
+            margin:       [10, 12, 10, 12],
+            filename:     'ワークシート_家計簿.pdf',
+            image:        { type: 'jpeg', quality: 0.95 },
+            html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak:    { mode: ['css', 'legacy'], before: '.page-break' }
+        };
+
+        html2pdf().set(opt).from(container).save().then(() => {
+            hiddenEls.forEach(el => el.style.display = '');
+            btn.textContent = origText;
+            btn.disabled = false;
+        }).catch(() => {
+            hiddenEls.forEach(el => el.style.display = '');
+            btn.textContent = origText;
+            btn.disabled = false;
+            alert('PDFの生成に失敗しました。');
+        });
+    }
+
+    updateAll();
+</script>
+</body>
+</html>
