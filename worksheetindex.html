@@ -130,11 +130,11 @@
             .header h1 { font-size: 18px; }
             .setting-group { flex-direction: column; align-items: flex-start; gap: 6px; }
         }
-        @page { size: A4 portrait; margin: 10mm 12mm; }
+        @page { size: A4 portrait; margin: 8mm 10mm; }
         @media print {
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            body { background: #fff !important; padding: 0 !important; }
-            .page { box-shadow: none !important; border-radius: 0 !important; max-width: 100% !important; margin: 0 !important; padding: 8mm 0 !important; overflow: visible !important; }
+            body { background: #fff !important; padding: 0 !important; font-size: 9pt !important; line-height: 1.4 !important; }
+            .page { box-shadow: none !important; border-radius: 0 !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
             .page::before { display: none; }
             .page-break { page-break-before: always; }
             .print-hidden { display: none !important; }
@@ -142,6 +142,29 @@
             .action-bar { display: none !important; }
             .edit-hint { display: none !important; }
             [contenteditable="true"]:hover, [contenteditable="true"]:focus { background: transparent !important; box-shadow: none !important; }
+            .header { margin-bottom: 12px !important; padding-bottom: 8px !important; }
+            .header h1 { font-size: 16px !important; margin-bottom: 2px !important; }
+            .header p { font-size: 11px !important; }
+            .section { margin-bottom: 10px !important; }
+            .section-title { font-size: 12px !important; padding: 5px 10px !important; margin-bottom: 6px !important; }
+            .procedure-list { margin-bottom: 4px !important; padding-left: 16px !important; }
+            .procedure-list li { font-size: 10px !important; margin-bottom: 2px !important; }
+            .setting-group { margin-bottom: 4px !important; gap: 6px !important; font-size: 11px !important; }
+            .setting-label { min-width: 90px !important; font-size: 11px !important; }
+            .radio-group label { padding: 3px 10px !important; font-size: 11px !important; }
+            .setting-note { font-size: 9px !important; }
+            table { font-size: 10px !important; margin-bottom: 4px !important; }
+            th, td { padding: 3px 6px !important; }
+            th { font-size: 9px !important; }
+            .ref-note { font-size: 8px !important; margin-top: 1px !important; line-height: 1.3 !important; }
+            .budget-table .item-cell { font-size: 11px !important; }
+            .budget-table input[type="number"] { font-size: 11px !important; padding: 3px 2px !important; }
+            .summary-box { margin-top: 8px !important; padding: 8px 12px !important; }
+            .summary-row { padding: 3px 0 !important; font-size: 12px !important; }
+            .summary-value { font-size: 14px !important; }
+            p[style*="margin: 16px"] { margin: 6px 0 4px !important; }
+            p[style*="margin-top:8px"] { margin-top: 2px !important; }
+            #currentIncome { font-size: 14px !important; }
         }
     </style>
 </head>
@@ -282,7 +305,8 @@
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script>
     const incomeMap = { 1: 106000, 2: 150000, 3: 183000, 4: 212000 };
 
@@ -329,55 +353,96 @@
         updateAll();
     }
 
-    function downloadPDF() {
+    async function downloadPDF() {
         const btn = document.getElementById('pdfBtn');
         const origText = btn.textContent;
         btn.textContent = '⏳ 生成中...';
         btn.disabled = true;
 
-        // 印刷時と同様に非表示にする要素を一時的に隠す
-        const hiddenEls = document.querySelectorAll('.print-hidden');
-        hiddenEls.forEach(el => el.style.display = 'none');
+        try {
+            // UI要素を一時的に非表示
+            const hideEls = document.querySelectorAll('.print-hidden, .edit-hint');
+            hideEls.forEach(el => el.style.display = 'none');
 
-        // input内の値をattributeに反映（html2pdfがvalueを読めるように）
-        document.querySelectorAll('input').forEach(input => {
-            input.setAttribute('value', input.value);
-        });
-        // radio の checked 状態を反映
-        document.querySelectorAll('input[type="radio"]').forEach(radio => {
-            if (radio.checked) radio.setAttribute('checked', 'checked');
-            else radio.removeAttribute('checked');
-        });
+            // input[type=number]の値をテキストとして表示用spanに置換
+            const inputBackups = [];
+            document.querySelectorAll('.budget-table input[type="number"]').forEach(input => {
+                const span = document.createElement('span');
+                span.textContent = input.value ? Number(input.value).toLocaleString() + ' 円' : '';
+                span.style.cssText = 'display:block;text-align:right;font-size:14px;padding:6px 4px;font-family:inherit;';
+                span.className = 'pdf-temp-value';
+                input.style.display = 'none';
+                input.parentNode.appendChild(span);
+                inputBackups.push({ input, span });
+            });
+            document.querySelectorAll('.budget-table input[type="text"]').forEach(input => {
+                const span = document.createElement('span');
+                span.textContent = input.value || '';
+                span.style.cssText = 'font-size:13px;font-weight:600;font-family:inherit;';
+                span.className = 'pdf-temp-value';
+                input.style.display = 'none';
+                input.parentNode.appendChild(span);
+                inputBackups.push({ input, span });
+            });
 
-        const pages = document.querySelectorAll('.page');
-        const container = document.createElement('div');
-        pages.forEach((page, i) => {
-            const clone = page.cloneNode(true);
-            if (i > 0) {
-                clone.style.pageBreakBefore = 'always';
+            // ページスタイルを一時変更
+            const pages = document.querySelectorAll('.page');
+            const origStyles = [];
+            pages.forEach(page => {
+                origStyles.push(page.style.cssText);
+                page.style.boxShadow = 'none';
+                page.style.borderRadius = '0';
+                page.style.margin = '0';
+                page.style.padding = '24px 32px';
+                page.style.maxWidth = '100%';
+                page.style.overflow = 'visible';
+            });
+
+            // A4: 210mm x 297mm, マージン8mm上下・10mm左右
+            const pageW = 210 - 20; // 190mm
+            const pageH = 297 - 16; // 281mm
+
+            // 各ページを個別にキャプチャしてPDFに追加
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                if (i > 0) pdf.addPage();
+
+                const canvas = await html2canvas(page, {
+                    scale: 2,
+                    useCORS: true,
+                    letterRendering: true,
+                    scrollY: 0,
+                    backgroundColor: '#ffffff'
+                });
+
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                const imgW = pageW;
+                const imgH = (canvas.height * pageW) / canvas.width;
+
+                pdf.addImage(imgData, 'JPEG', 10, 8, imgW, Math.min(imgH, pageH));
             }
-            container.appendChild(clone);
-        });
 
-        const opt = {
-            margin:       [10, 12, 10, 12],
-            filename:     'ワークシート_家計簿.pdf',
-            image:        { type: 'jpeg', quality: 0.95 },
-            html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak:    { mode: ['css', 'legacy'], before: '.page-break' }
-        };
+            pdf.save('ワークシート_家計簿.pdf');
 
-        html2pdf().set(opt).from(container).save().then(() => {
-            hiddenEls.forEach(el => el.style.display = '');
-            btn.textContent = origText;
-            btn.disabled = false;
-        }).catch(() => {
-            hiddenEls.forEach(el => el.style.display = '');
-            btn.textContent = origText;
-            btn.disabled = false;
+            // 復元
+            pages.forEach((page, i) => {
+                page.style.cssText = origStyles[i];
+            });
+            inputBackups.forEach(({ input, span }) => {
+                input.style.display = '';
+                span.remove();
+            });
+            hideEls.forEach(el => el.style.display = '');
+
+        } catch(e) {
+            console.error('PDF生成エラー:', e);
             alert('PDFの生成に失敗しました。');
-        });
+        }
+        btn.textContent = origText;
+        btn.disabled = false;
     }
 
     updateAll();
