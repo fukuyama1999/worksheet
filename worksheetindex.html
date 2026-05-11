@@ -128,7 +128,34 @@
             body { padding: 12px 6px; }
             .page { padding: 20px 16px; border-radius: 14px; }
             .header h1 { font-size: 18px; }
+            .header p { font-size: 12px; }
             .setting-group { flex-direction: column; align-items: flex-start; gap: 6px; }
+            .section-title { font-size: 14px; padding: 8px 12px; }
+            .procedure-list li { font-size: 13px; }
+            table { font-size: 11px; }
+            th, td { padding: 5px 6px; }
+            th { font-size: 10px; }
+            .summary-row { font-size: 13px; }
+            .summary-value { font-size: 16px; }
+        }
+        @media (max-width: 480px) {
+            body { padding: 8px 4px; }
+            .page { padding: 16px 12px; border-radius: 10px; }
+            .header h1 { font-size: 16px; }
+            .header p { font-size: 11px; }
+            .section-title { font-size: 13px; padding: 6px 10px; }
+            .procedure-list li { font-size: 12px; }
+            table { font-size: 10px; display: block; overflow-x: auto; white-space: nowrap; }
+            th, td { padding: 4px 5px; }
+            .budget-table { display: table; overflow-x: visible; white-space: normal; }
+            .budget-table .item-cell { font-size: 12px; }
+            .budget-table input[type="number"] { font-size: 13px; }
+            .radio-group label { padding: 5px 12px; font-size: 13px; }
+            .setting-label { font-size: 13px; min-width: auto; }
+            .summary-row { font-size: 12px; }
+            .summary-value { font-size: 15px; }
+            .ref-note { font-size: 10px; }
+            #currentIncome { font-size: 18px !important; }
         }
         @page { size: A4 portrait; margin: 8mm 10mm; }
         @media print {
@@ -385,7 +412,7 @@
                 inputBackups.push({ input, span });
             });
 
-            // ページスタイルを一時変更
+            // ページスタイルを一時変更（A4幅に固定）
             const pages = document.querySelectorAll('.page');
             const origStyles = [];
             pages.forEach(page => {
@@ -393,8 +420,9 @@
                 page.style.boxShadow = 'none';
                 page.style.borderRadius = '0';
                 page.style.margin = '0';
-                page.style.padding = '24px 32px';
-                page.style.maxWidth = '100%';
+                page.style.padding = '20px 28px';
+                page.style.width = '700px';
+                page.style.maxWidth = '700px';
                 page.style.overflow = 'visible';
             });
 
